@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Maze</title>
+</head>
+<body style="background-color: #282828; color: #cccccc">
+
+<div id="contentDiv" style="font-size: medium">
+<div id = "canvasDiv" style="text-align: center; color: #cccccc">
+<canvas id = "canvas"></canvas><br />
+</div>
+</div>
+
+<br />
+<div id = "description1" style = "text-align: left; max-width: 720px; margin: 0 auto; font-size: 80%">
+<strong>迷路自動生成ウェブ アプリケーション</strong>です。<br />
+<br />
+画面に<strong><span style="color:#4080CE;">青色の枡</span></strong>と<strong><span style="color:#4080CE;">緑色の枡</span></strong>があるかと思います。<br />
+青色の枡はキーボードの "<strong><span style="color:#4080CE;">E(上), S(左), D(下), F(右)</span></strong>" または "<strong><span style="color:#4080CE;">I(上), J(左), K(下), L(右)</span></strong>" キーで移動出来ます。<br />
+ゴールは<strong><span style="color:#4080CE;">緑色の枡</span></strong>です。<br />
+スタート(赤色の枡)とゴール(緑色の枡)は互いに最も遠くなるように "<strong>幅優先探索</strong>" アルゴリズムで配置してあります。<br />
+画面上部の "<strong><span style="color:#4080CE;">Generate New Maze</span></strong>" ボタンを押すと迷路を再生成します。<br />
+"<strong><span style="color:#4080CE;">Level Up</span></strong>" ボタン及び "<strong><span style="color:#4080CE;">Level Down</span></strong>" ボタンを押すと、迷路の規模が変わります。<br />
+Level: 4だとゴールまで1分以上掛かるかも知れません。<br />
+どうぞお楽しみ下さいませ。<br />
+<br />
+<span style="color:#CE4C4C;">もしも何か問題が生じても私は責任を取れませんので御了承下さいませ。</span><br />
+<br />
+[このプログラムについて]<br />
+" <strong>HTML5</strong> " の " <strong>Canvas</strong> " 要素を利用して画面の描画をしております。<br />
+このプログラムのコードは全てブログ記事のHTML文書内に " <strong>JavaScript</strong> " で記述したものであり、作成するに当たってテキスト エディターとウェブ ブラウザー以外は何も使用しておりません。<br />
+追加のライブラリーなどは一切使用せず、純粋にHTML5対応ブラウザーだけで動作致します。<br />
+</div>
+
+<script type = "text/javascript">
+
+
+// 他のファイルのグローバル変数とこのファイルのグローバル変数の衝突を避ける為に、コンストラクターでモジュール全体のスコープを形成し、即時実行する。
+/** @constructor */
+let globalObjectOfThisProgram = function()
+{
+///////////////////////////////////////////////////////
+
+
+let menuWindowNumber = 0;
+let indexOfMapSize = 5; // 指数。
+let mapArrayWidth = 0;
+let mapArrayHeight = 0;
+let mapArray = []; // 行、列の2次元配列。
+let currentPosition = [0, 0]; // 行、列。
+let upstairs = [0, 0]; // 行、列。
+let downstairs = [0, 0]; // 行、列。
+
+let variableForFunctionOfProcessingKeyDownEvent = null;
+let variableForFunctionOfProcessingKeyUpEvent = null;
+
+let timerForGettingPositionOfPointer = null;
+let timerToStopEffectOfClickingButton = [];
+let timerToGenerateMaze = null;
+
+let areaWidth = 0;
+let areaHeight = 0;
+
+let divElementOfCanvas;
+let canvasContext;
+let canvasLayer1;
+let canvasLayer2;
+let canvasLayer3;
+let canvasLayer4;
+let canvasForTemporaryUseLayer1;
+let canvasContextLayer1;
+let canvasContextLayer2;
+let canvasContextLayer3;
+let canvasContextLayer4;
+let canvasContextForTemporaryUseLayer1;
+
+
+///////////////////////////////////////////////////////
+
+
+// メニュー ウィンドウの矩形情報を格納する為のオブジェクトを作成する。
+let rectangleOfMenuWindow = [];
+rectangleOfMenuWindow[0] =
+{
+ left: 4,
+ top: 4,
+ width: 180,
+ height: 40,
+ verticalPaddingOfMenu: 5,
+ horizontalPaddingOfMenu: 5,
+ widthOfMenu: 0,
+ heightOfMenu: 0,
+ rectangleOfMenu: []
+};
+rectangleOfMenuWindow[0].widthOfMenu = rectangleOfMenuWindow[0].width - 2 * rectangleOfMenuWindow[0].horizontalPaddingOfMenu;
+rectangleOfMenuWindow[0].heightOfMenu = rectangleOfMenuWindow[0].height - 2 * rectangleOfMenuWindow[0].verticalPaddingOfMenu;
+
+
+///////////////////////////////////////////////////////
+
+
+// メニュー項目の矩形情報を格納する為のオブジェクトを作成する。
+rectangleOfMenuWindow[0].rectangleOfMenu[0] =
+{
+ text: "Generate New Maze",
+ left: rectangleOfMenuWindow[0].left + 1 * rectangleOfMenuWindow[0].horizontalPaddingOfMenu + 0 * rectangleOfMenuWindow[0].widthOfMenu,
+ top: rectangleOfMenuWindow[0].top + 1 * rectangleOfMenuWindow[0].verticalPaddingOfMenu + 0 * rectangleOfMenuWindow[0].heightOfMenu,
+ width: rectangleOfMenuWindow[0].widthOfMenu,
+ height: rectangleOfMenuWindow[0].heightOfMenu,
+ right: 0,
+ bottom: 0,
+ isPointerOnMenu: false,
+ isMenuClicked: false
+};
+rectangleOfMenuWindow[0].rectangleOfMenu[0].right = rectangleOfMenuWindow[0].rectangleOfMenu[0].left + rectangleOfMenuWindow[0].rectangleOfMenu[0].width;
+rectangleOfMenuWindow[0].rectangleOfMenu[0].bottom = rectangleOfMenuWindow[0].rectangleOfMenu[0].top + rectangleOfMenuWindow[0].rectangleOfMenu[0].height;
+
+rectangleOfMenuWindow[0].rectangleOfMenu[1] =
+{
+ text: "Level Up",
+ left: rectangleOfMenuWindow[0].left + 2 * rectangleOfMenuWindow[0].horizontalPaddingOfMenu + 1 * rectangleOfMenuWindow[0].widthOfMenu,
+ top: rectangleOfMenuWindow[0].top + 1 * rectangleOfMenuWindow[0].verticalPaddingOfMenu + 0 * rectangleOfMenuWindow[0].heightOfMenu,
+ width: rectangleOfMenuWindow[0].widthOfMenu,
+ height: rectangleOfMenuWindow[0].heightOfMenu,
+ right: 0,
+ bottom: 0,
+ isPointerOnMenu: false,
+ isMenuClicked: false
+};
+rectangleOfMenuWindow[0].rectangleOfMenu[1].right = rectangleOfMenuWindow[0].rectangleOfMenu[1].left + rectangleOfMenuWindow[0].rectangleOfMenu[1].width;
+rectangleOfMenuWindow[0].rectangleOfMenu[1].bottom = rectangleOfMenuWindow[0].rectangleOfMenu[1].top + rectangleOfMenuWindow[0].rectangleOfMenu[1].height;
+
+rectangleOfMenuWindow[0].rectangleOfMenu[2] =
+{
+ text: "Level Down",
+ left: rectangleOfMenuWindow[0].left + 3 * rectangleOfMenuWindow[0].horizontalPaddingOfMenu + 2 * rectangleOfMenuWindow[0].widthOfMenu,
+ top: rectangleOfMenuWindow[0].top + 1 * rectangleOfMenuWindow[0].verticalPaddingOfMenu + 0 * rectangleOfMenuWindow[0].heightOfMenu,
+ width: rectangleOfMenuWindow[0].widthOfMenu,
+ height: rectangleOfMenuWindow[0].heightOfMenu,
+ right: 0,
+ bottom: 0,
+ isPointerOnMenu: false,
+ isMenuClicked: false
+};
+rectangleOfMenuWindow[0].rectangleOfMenu[2].right = rectangleOfMenuWindow[0].rectangleOfMenu[2].left + rectangleOfMenuWindow[0].rectangleOfMenu[2].width;
+rectangleOfMenuWindow[0].rectangleOfMenu[2].bottom = rectangleOfMenuWindow[0].rectangleOfMenu[2].top + rectangleOfMenuWindow[0].rectangleOfMenu[2].height;
+
+
+///////////////////////////////////////////////////////
+
+
+// 迷路表示領域の矩形情報を格納する為のオブジェクトを作成する。
+let rectangleOfMazeMap =
+{
+ left: 5,
+ top: 45,
+ width: areaWidth - 10,
+ height: areaHeight - 40 - 10,
+ right: areaWidth - 5,
+ bottom: areaHeight - 5
+};
+
+
+///////////////////////////////////////////////////////
+
+
+// ポインターの座標を格納する為のオブジェクトを作成する。
+let pointerCoordinate =
+{
+ clientX: 0,
+ clientY: 0,
+ clickX: 0,
+ clickY: 0,
+ coordinateInCanvasX: 0,
+ coordinateInCanvasY: 0,
+ clickHeightInCanvas: 0,
+ isPointerInCanvasArea: false,
+ isPointerPushingDown: false,
+};
+
+
+///////////////////////////////////////////////////////
+
+
+// 画面を初期化する為の関数を宣言する。
+function initializeCanvas()
+{
+ // div要素を取得し、変数に格納して置く。
+ divElementOfCanvas = document.getElementById( "canvas" );
+
+ // Canvas領域の大きさを書き換える。
+ areaWidth = Math.min(
+  document.documentElement.clientWidth * 0.98,
+  document.documentElement.clientHeight * 0.98 - 50 );
+
+ divElementOfCanvas.width = areaWidth;
+
+ areaHeight = areaWidth + 50;
+ divElementOfCanvas.height = areaHeight;
+
+ // 迷路表示領域の矩形情報を格納する為のオブジェクトの大きさを初期化する。
+ rectangleOfMazeMap.width = areaWidth - 10,
+ rectangleOfMazeMap.height = areaHeight - 40 - 10,
+ rectangleOfMazeMap.right = areaWidth - 5,
+ rectangleOfMazeMap.bottom = areaHeight - 5
+
+ // 実際に画面上に表示されるCanvas要素のコンテキストを作成する。
+ canvasContext = divElementOfCanvas.getContext( "2d" );
+
+ // オフスクリーン描画用のCanvas要素のコンテキストを作成する。
+ canvasLayer1 = document.createElement( "canvas" );
+ canvasLayer1.width = canvasContext.canvas.width;
+ canvasLayer1.height = canvasContext.canvas.height;
+ canvasContextLayer1 = canvasLayer1.getContext( "2d" );
+
+ canvasLayer2 = document.createElement( "canvas" );
+ canvasLayer2.width = canvasContext.canvas.width;
+ canvasLayer2.height = canvasContext.canvas.height;
+ canvasContextLayer2 = canvasLayer2.getContext( "2d" );
+
+ canvasLayer3 = document.createElement( "canvas" );
+ canvasLayer3.width = canvasContext.canvas.width;
+ canvasLayer3.height = canvasContext.canvas.height;
+ canvasContextLayer3 = canvasLayer3.getContext( "2d" );
+
+ canvasLayer4 = document.createElement( "canvas" );
+ canvasLayer4.width = canvasContext.canvas.width;
+ canvasLayer4.height = canvasContext.canvas.height;
+ canvasContextLayer4 = canvasLayer4.getContext( "2d" );
+
+ canvasForTemporaryUseLayer1 = document.createElement( "canvas" );
+ canvasForTemporaryUseLayer1.width = canvasContext.canvas.width;
+ canvasForTemporaryUseLayer1.height = canvasContext.canvas.height;
+ canvasContextForTemporaryUseLayer1 = canvasForTemporaryUseLayer1.getContext( "2d" );
+
+ // Canvas レイヤーを初期化する。
+ clearCanvasLayer();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// Canvas レイヤーを初期化する為の関数を宣言する。
+function clearCanvasLayer()
+{
+ canvasContextLayer1.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+ canvasContextLayer2.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+ canvasContextLayer3.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+ canvasContextLayer4.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+
+ // 背景のCanvas レイヤーに対して塗り潰しを行う。
+ canvasContextLayer1.fillStyle = "rgba( 64, 64, 64, 1.0 )";
+ canvasContextLayer1.fillRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// ポインターの座標を取得する為の関数を実行する為のタイマーを始動する関数を宣言する。
+function startTimerToGetPositionOfPointer()
+{
+ // 指定ミリ秒毎に関数を実行する。
+ timerForGettingPositionOfPointer = setInterval( function(){document.onmousemove = getPositionOfPointer;}, 20 );
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// ポインターの座標を取得する為の関数を宣言する。
+function getPositionOfPointer( event )
+{
+ pointerCoordinate.clientX = event.clientX + window.pageXOffset;
+ pointerCoordinate.clientY = event.clientY + window.pageYOffset;
+ if( pointerCoordinate.clientX >= canvasContext.canvas.offsetLeft && pointerCoordinate.clientX <= canvasContext.canvas.offsetLeft + canvasContext.canvas.width )
+ {
+  if( pointerCoordinate.clientY >= canvasContext.canvas.offsetTop && pointerCoordinate.clientY <= canvasContext.canvas.offsetTop + canvasContext.canvas.height )
+  {
+   // もしポインターの位置がCanvas内であれば以下の処理を行う。
+
+   pointerCoordinate.isPointerInCanvasArea = true;
+   pointerCoordinate.coordinateInCanvasX = pointerCoordinate.clientX - canvasContext.canvas.offsetLeft;
+   pointerCoordinate.coordinateInCanvasY = pointerCoordinate.clientY - canvasContext.canvas.offsetTop;
+
+   let i = 0;
+   for( i = 0; i < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu.length; i++ )
+   {
+    if( pointerCoordinate.coordinateInCanvasX >= rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left &&
+     pointerCoordinate.coordinateInCanvasX < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].right &&
+     pointerCoordinate.coordinateInCanvasY >= rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top &&
+     pointerCoordinate.coordinateInCanvasY < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].bottom )
+    {
+     // もしポインターがメニュー項目の上にあったならば以下の処理を行う。
+     if( rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isPointerOnMenu == false )
+     {
+      // もしポインターがメニュー項目の上に乗った直後ならば画面を更新する。
+      rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isPointerOnMenu = true;
+
+      // メニューを描画する。
+      drawingMenu();
+     }
+    }else
+    {
+     // もしポインターがメニュー項目の上に無いならば以下の処理を行う。
+     if( rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isPointerOnMenu == true )
+     {
+      // もしポインターがメニュー項目の上から外れた直後ならば画面を更新する。
+      rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isPointerOnMenu = false;
+
+      // メニューを描画する。
+      drawingMenu();
+     }
+    }
+   }
+  }else
+  {
+   pointerCoordinate.isPointerInCanvasArea = false;
+  }
+ }else
+ {
+  pointerCoordinate.isPointerInCanvasArea = false;
+ }
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// タイマーを停止させる為の関数を宣言する。
+function stopTimerToGetPositionOfPointer()
+{
+ clearInterval( timerForGettingPositionOfPointer );
+ timerForGettingPositionOfPointer = null;
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 画面を表示する為の関数を宣言する。
+function displayCanvas()
+{
+ // 実際に画面上に表示されるCanvas要素のコンテキストに対してオフスクリーン描画用のCanvas要素の内容を転写する。
+ canvasContext.drawImage( canvasLayer1, 0, 0 ); // 背景を表示する。
+ canvasContext.drawImage( canvasLayer2, 0, 0 ); // メニュー ウィンドウを表示する。
+ canvasContext.drawImage( canvasLayer3, 0, 0 ); // 迷路を表示する。
+ canvasContext.drawImage( canvasLayer4, 0, 0 ); // 駒を表示する。
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// クリックのイヴェントのリスナーを設定する為の関数を宣言する。
+function addClickHandler()
+{
+ document.addEventListener( "mousedown", processPointerPushingDown, true );
+ document.addEventListener( "mouseup", processPointerUp, true );
+ // 第3引数をtrueにすると子要素のイヴェント処理が優先される。
+ // removeEventListener() する際はオプションのフラグまで一致していなければならない。
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// キーボードのキーのイヴェントのリスナーを設定する為の関数を宣言する。
+function addKeyHandler()
+{
+ // キーボードのキーを押下した際のイヴェントのリスナーを設定する。
+ // 仮引数を持つ匿名関数をaddEventListener()の引数として渡してremoveEventListener()で削除出来るようにする為にその匿名関数を変数に代入して置く。
+ variableForFunctionOfProcessingKeyDownEvent = function( event ){processKeyDownEvent( event );};
+ document.addEventListener( "keydown", variableForFunctionOfProcessingKeyDownEvent, false );
+ // 第3引数をtrueにすると子要素のイヴェント処理が優先される。
+ // removeEventListener() する際はオプションのフラグまで一致していなければならない。
+
+ // キーボードのキーを解放した際のイヴェントのリスナーを設定する。
+ variableForFunctionOfProcessingKeyUpEvent = function( event ){processKeyUpEvent( event );};
+ document.addEventListener( "keyup", variableForFunctionOfProcessingKeyUpEvent, false );
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// インタラクティヴ キャンヴァスの全てのイヴェント リスナーを停止させるプロトタイプのメソッドを定義する。
+function removeAllOfInteractiveCanvasListener()
+{
+ // イヴェント リスナーを解除する。
+ document.removeEventListener( "mousedown", processPointerPushingDown, true );
+ document.removeEventListener( "mouseup", processPointerUp, true );
+ document.removeEventListener( "keydown", variableForFunctionOfProcessingKeyDownEvent, false );
+ document.removeEventListener( "keyup", variableForFunctionOfProcessingKeyUpEvent, false );
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 迷路生成処理を実行する為の関数を宣言する。
+function generateMaze()
+{
+ // 地図の2次元配列の辺縁を厚みが3枡分のtrue(壁)で埋める。
+
+ let i = 0;
+ let j = 0;
+ for( i = 0; i < mapArrayWidth; i++ )
+ {
+  mapArray[0][i] = true;
+  mapArray[1][i] = true;
+  mapArray[2][i] = true;
+  mapArray[mapArrayHeight - 3][i] = true;
+  mapArray[mapArrayHeight - 2][i] = true;
+  mapArray[mapArrayHeight - 1][i] = true;
+ }
+
+ for( i = 2; i < mapArrayHeight - 2; i++ )
+ {
+  mapArray[i][0] = true;
+  mapArray[i][1] = true;
+  mapArray[i][2] = true;
+  mapArray[i][mapArrayWidth - 3] = true;
+  mapArray[i][mapArrayWidth - 2] = true;
+  mapArray[i][mapArrayWidth - 1] = true;
+ }
+
+
+ // 壁延ばし法により迷路を生成する。
+
+ let mapQue = []; // 行、列の2要素の1次元配列のキュー。
+ for( i = 2; i < mapArrayHeight - 2; i += 2 )
+ {
+  for( j = 2; j < mapArrayWidth - 2; j += 2 )
+  {
+   // 壁かつ探索可能な枡目を記録する。
+   if( mapArray[i][j] === true )
+   {
+    mapQue.push( [i, j] );
+   }
+  }
+ }
+
+ let loopFlag = true;
+ let loopCounter = 0;
+ let maxCountOfLoop = Math.pow( 4, indexOfMapSize ) * 0.1;
+ let randomNumber = 0;
+ let k = 0;
+ let l = 0;
+ while( mapQue.length > 0 && loopCounter < maxCountOfLoop )
+ {
+  // 始点を置く。
+  randomNumber = Math.floor( Math.random() * mapQue.length );
+  i = mapQue[randomNumber][0];
+  j = mapQue[randomNumber][1];
+  mapQue.splice( randomNumber, 1 ); // 探索済みの座標を削除する。
+
+  loopFlag = true;
+  while( loopFlag === true )
+  {
+   if( mapArray[i][j] === true && (mapArray[i - 2][j] === false || mapArray[i][j - 2] === false || mapArray[i][j + 2] === false || mapArray[i + 2][j] === false) )
+   // その枡目が壁であり、かつ上下左右の内いずれかの方向の2枡先が空間ならば以下の処理を実行する。
+   {
+    mapQue.push( [i, j] ); // 壁にした座標をキューに追加する。
+
+    k = Math.floor( Math.random() * 4 );
+    if( k === 0 && mapArray[i - 2][j] === false )
+    {
+     mapArray[i - 1][j] = true;
+     mapArray[i - 2][j] = true;
+     i -= 2;
+    }else if( k === 1 && mapArray[i][j - 2] === false )
+    {
+     mapArray[i][j - 1] = true;
+     mapArray[i][j - 2] = true;
+     j -= 2;
+    }else if( k === 2 && mapArray[i][j + 2] === false )
+    {
+     mapArray[i][j + 1] = true;
+     mapArray[i][j + 2] = true;
+     j += 2;
+    }else if( k === 3 && mapArray[i + 2][j] === false )
+    {
+     mapArray[i + 1][j] = true;
+     mapArray[i + 2][j] = true;
+     i += 2;
+    }
+   }else
+   {
+    loopFlag = false;
+   }
+  }
+  loopCounter++;
+ }
+
+ // 階段を設置する。
+ placeStair();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 迷路に階段を配置する為の関数を宣言する。
+function placeStair()
+{
+ let i = 0;
+ let j = 0;
+ let k = 0;
+ let l = 0;
+
+ // 幅優先探索により最も遠い2点を選ぶ。
+
+ // ランダムに探索開始地点を選ぶ。
+ let vertex = [0, 0];
+ let vertexChild = [0, 0];
+ let loopFlag = true;
+ while( loopFlag === true )
+ {
+  i = Math.floor( Math.random() * ((mapArrayHeight - 5) / 2) ) * 2 + 3;
+  j = Math.floor( Math.random() * ((mapArrayHeight - 5) / 2) ) * 2 + 3;
+  if( mapArray[i][j] === false )
+  // その枡目が空間であるならば以下の処理を実行する。
+  {
+   vertex[0] = i;
+   vertex[1] = j;
+
+   // ループを止める。
+   loopFlag = false;
+  }
+ }
+
+ function serchFarthest()
+ {
+  // 配列をディープ コピーする。
+  let searchArray = [];
+  serchArray = Array.from( mapArray );
+  for( i = 0; i < mapArray.length; i++ )
+  {
+   searchArray[i] = Array.from( mapArray[i] );
+  }
+
+  let que = [];
+
+  // キューの配列の末尾に要素を追加する。
+  que.push( Array.from( vertex ) );
+
+  while( que.length != 0 )
+  {
+   // キューの先頭の要素を取得してから除去する。
+   vertex = que.shift();
+
+   if( searchArray[vertex[0]][vertex[1]] == false )
+   {
+    if( searchArray[vertex[0] + 1][vertex[1]] == false )
+    {
+     // その地点の座標を子頂点として記録する。
+     vertexChild = Array.from( vertex );
+
+     // その方向に進行可能ならばキューの最後に次の座標を追加する。
+     vertexChild[0]++;
+     que.push( Array.from( vertexChild ) );
+    }
+    if( searchArray[vertex[0]][vertex[1] + 1] == false )
+    {
+     vertexChild = Array.from( vertex );
+     vertexChild[1]++;
+     que.push( Array.from( vertexChild ) );
+    }
+    if( searchArray[vertex[0] - 1][vertex[1]] == false )
+    {
+     vertexChild = Array.from( vertex );
+     vertexChild[0]--;
+     que.push( Array.from( vertexChild ) );
+    }
+    if( searchArray[vertex[0]][vertex[1] - 1] == false )
+    {
+     vertexChild = Array.from( vertex );
+     vertexChild[1]--;
+     que.push( Array.from( vertexChild ) );
+    }
+
+    // 探索済みの地点を埋める。
+    searchArray[vertex[0]][vertex[1]] = true;
+   }
+  }
+ }
+
+ serchFarthest();
+
+ // 出発地点。
+ upstairs[0] = vertex[0];
+ upstairs[1] = vertex[1];
+
+ // 現在位置を階段上にする。
+ currentPosition[0] = upstairs[0];
+ currentPosition[1] = upstairs[1];
+
+ serchFarthest();
+
+ // 終着地点。
+ downstairs[0] = vertex[0];
+ downstairs[1] = vertex[1];
+
+ // 迷路を描画する。
+ drawMaze();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 迷路を描画する為の関数を宣言する。
+function drawMaze()
+{
+ // 元のCanvas レイヤーの内容を消去する。
+ canvasContextLayer3.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+
+ // 迷路表示領域を描画する。
+ canvasContextLayer3.save(); // 描画設定を保存する。
+ canvasContextLayer3.beginPath();
+ canvasContextLayer3.rect( rectangleOfMazeMap.left, rectangleOfMazeMap.top, rectangleOfMazeMap.width, rectangleOfMazeMap.height );
+ canvasContextLayer3.fillStyle = "rgba( 192, 192, 200, 1.0 )";
+ canvasContextLayer3.fill();
+ canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+
+
+ // 地図の2次元配列に基づいて迷路を描画する。
+ let gridWidth = rectangleOfMazeMap.width / (mapArrayWidth - 3 - 1.3);
+ let gridHeight = rectangleOfMazeMap.height / (mapArrayHeight - 3 - 1.3);
+ let i = 0;
+ let j = 0;
+ for( i = 0; i < mapArrayHeight - 4; i++ )
+ {
+  for( j = 0; j < mapArrayWidth - 4; j++ )
+  {
+   if( i % 2 == 1 &&  j % 2 == 1  )
+   // 奇数行かつ奇数列ならば以下の処理を行う。
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    canvasContextLayer3.fillStyle = "rgba( 255, 255, 255, 0.4 )";
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.ceil( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.ceil( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 1.3 - 0.5,
+     (gridHeight) * 1.3 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }else if( i % 2 == 1 &&  j % 2 == 0  )
+   // 奇数行かつ偶数列ならば以下の処理を行う。
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    if( mapArray[i + 2][j + 2] === false )
+    {
+     canvasContextLayer3.fillStyle = "rgba( 255, 255, 255, 0.4 )";
+    }else
+    {
+     canvasContextLayer3.fillStyle = "rgba( 32, 32, 32, 0.9 )";
+    }
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.floor( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.ceil( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 0.7 - 0.5,
+     (gridHeight) * 1.3 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }else if( i % 2 == 0 &&  j % 2 == 1  )
+   // 偶数行かつ奇数列ならば以下の処理を行う。
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    if( mapArray[i + 2][j + 2] === false )
+    {
+     canvasContextLayer3.fillStyle = "rgba( 255, 255, 255, 0.4 )";
+    }else
+    {
+     canvasContextLayer3.fillStyle = "rgba( 32, 32, 32, 0.9 )";
+    }
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.ceil( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.floor( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 1.3 - 0.5,
+     (gridHeight) * 0.7 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }else if( i % 2 == 0 &&  j % 2 == 0  )
+   // 偶数行かつ偶数列ならば以下の処理を行う。
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    if( mapArray[i + 2][j + 2] === false )
+    {
+     canvasContextLayer3.fillStyle = "rgba( 255, 255, 255, 0.4 )";
+    }else
+    {
+     canvasContextLayer3.fillStyle = "rgba( 32, 32, 32, 0.9 )";
+    }
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.floor( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.floor( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 0.7 - 0.5,
+     (gridHeight) * 0.7 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }
+
+   // 開始地点を表す枡目を描画する。
+   if( i + 2 == upstairs[0] && j + 2 == upstairs[1] )
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    canvasContextLayer3.fillStyle = "rgba( 128, 16, 16, 1.0 )";
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.ceil( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.ceil( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 1.3 - 0.5,
+     (gridHeight) * 1.3 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }
+
+   // 終着地点を表す枡目を描画する。
+   if( i + 2 == downstairs[0] && j + 2 == downstairs[1] )
+   {
+    canvasContextLayer3.save(); // 描画設定を保存する。
+    canvasContextLayer3.fillStyle = "rgba( 12, 96, 12, 1.0 )";
+    canvasContextLayer3.fillRect(
+     0.25 + rectangleOfMazeMap.left
+     + Math.ceil( j / 2 ) * gridWidth * 0.7 + Math.floor( j / 2 ) * gridWidth * 1.3,
+     0.25 + rectangleOfMazeMap.top
+     + Math.ceil( i / 2 ) * gridHeight * 0.7 + Math.floor( i / 2 ) * gridHeight * 1.3,
+     (gridWidth) * 1.3 - 0.5,
+     (gridHeight) * 1.3 - 0.5 );
+    canvasContextLayer3.restore(); // 描画の設定を元に戻す。
+   }
+  }
+ }
+
+ // 駒を描画する。
+ drawPosition();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 駒を描画する為の関数を宣言する。
+function drawPosition()
+{
+ // 元のCanvas レイヤーの内容を消去する。
+ canvasContextLayer4.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height );
+
+ // 駒を描画する。
+ let gridWidth = rectangleOfMazeMap.width / (mapArrayWidth - 3 - 1.3);
+ let gridHeight = rectangleOfMazeMap.height / (mapArrayHeight - 3 - 1.3);
+
+ // 駒を描画する。
+ canvasContextLayer4.save(); // 描画設定を保存する。
+ canvasContextLayer4.fillStyle = "rgba( 16, 16, 192, 1.0 )";
+ canvasContextLayer4.fillRect(
+  0.25 + rectangleOfMazeMap.left
+  + Math.ceil( (currentPosition[1] - 2) / 2 ) * gridWidth * 0.7 + Math.floor( (currentPosition[1] - 2) / 2 ) * gridWidth * 1.3,
+  0.25 + rectangleOfMazeMap.top
+  + Math.ceil( (currentPosition[0] - 2) / 2 ) * gridHeight * 0.7 + Math.floor( (currentPosition[0] - 2) / 2 ) * gridHeight * 1.3,
+  (gridWidth) * 1.3 - 0.5,
+  (gridHeight) * 1.3 - 0.5 );
+ canvasContextLayer4.restore(); // 描画の設定を元に戻す。
+
+ // 駒が終着地点にあったら文字列を表示する。
+ if( downstairs[0] == currentPosition[0] && downstairs[1] == currentPosition[1] )
+ {
+  // 文字の設定をする。
+  canvasContextLayer4.save(); // 描画設定を保存する。
+  canvasContextLayer4.fillStyle = "rgba( 48, 128, 192, 0.9 )";
+  canvasContextLayer4.font = "64px 'sans-serif'";
+  canvasContextLayer4.textAlign = "center";
+  canvasContextLayer4.textBaseline = "bottom";
+
+  // 文字列を描画する。
+  canvasContextLayer4.fillText(
+   "You solved!!",
+   rectangleOfMazeMap.left + rectangleOfMazeMap.width / 2,
+   rectangleOfMazeMap.top + rectangleOfMazeMap.height / 2 );
+  canvasContextLayer4.restore(); // 描画の設定を元に戻す。
+ }
+
+ // 画面に表示する。
+ displayCanvas();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// メニュー ウィンドウを描画する為の関数を宣言する。
+function drawingMenu()
+{
+ canvasContextLayer2.clearRect( 0, 0, canvasContext.canvas.width, canvasContext.canvas.height ); // 元のCanvas レイヤーの内容を消去する。
+
+ // メニューを描画する。
+ let i = 0;
+ for( i = 0; i < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu.length; i++ )
+ {
+  if( rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isPointerOnMenu == true )
+  {
+   // もしポインターがそのメニュー項目の上にあったならば以下の処理を行う。
+   if( pointerCoordinate.isPointerPushingDown || rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isMenuClicked )
+   {
+    // もしそのメニュー項目の上でポインターが押されていたか或いはそのメニュー項目が押された直後ならば以下の処理を行う。
+
+    // メニュー項目のボタンを描画する。
+    canvasContextLayer2.save(); // 描画設定を保存する。
+    canvasContextLayer2.beginPath();
+    canvasContextLayer2.rect(
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height );
+    canvasContextLayer2.fillStyle = "rgba( 48, 48, 48, 0.5 )";
+    canvasContextLayer2.fill();
+
+    // 枠線を描画する。
+    canvasContextLayer2.strokeStyle = "rgba( 96, 96, 96, 0.8 )";
+    canvasContextLayer2.shadowColor = "white";
+    canvasContextLayer2.shadowBlur = 1;
+    canvasContextLayer2.stroke();
+    canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+    // 文字の設定をする。
+    canvasContextLayer2.save(); // 描画設定を保存する。
+    canvasContextLayer2.fillStyle = "rgba( 96, 96, 96, 0.9 )";
+    canvasContextLayer2.font = "16px 'sans-serif'";
+    canvasContextLayer2.textAlign = "center";
+    canvasContextLayer2.textBaseline = "middle";
+
+    // 文字列を描画する。
+    canvasContextLayer2.fillText(
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].text,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width / 2,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height / 2 + 2 );
+    canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+   }else
+   // もしポインターがそのメニュー項目の上にあり、かつポインターが押されておらず、かつそのメニュー項目が押された直後でないならば以下の処理を行う。
+   {
+    // メニュー項目1のボタンを描画する。
+    canvasContextLayer2.save(); // 描画設定を保存する。
+    canvasContextLayer2.beginPath();
+    canvasContextLayer2.rect(
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height );
+    canvasContextLayer2.fillStyle = "rgba( 128, 128, 128, 0.6 )";
+    canvasContextLayer2.fill();
+
+    // 枠線を描画する。
+    canvasContextLayer2.strokeStyle = "rgba( 255, 255, 255, 0.9 )";
+    canvasContextLayer2.shadowColor = "white";
+    canvasContextLayer2.shadowBlur = 1;
+    canvasContextLayer2.stroke();
+    canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+    // 文字の設定をする。
+    canvasContextLayer2.save(); // 描画設定を保存する。
+    canvasContextLayer2.fillStyle = "rgba( 255, 255, 255, 1.0 )";
+    canvasContextLayer2.font = "16px 'sans-serif'";
+    canvasContextLayer2.textAlign = "center";
+    canvasContextLayer2.textBaseline = "middle";
+
+    // 文字列を描画する。
+    canvasContextLayer2.fillText(
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].text,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width / 2,
+     rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height / 2 );
+    canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+   }
+  }else if( rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isMenuClicked )
+  // もしポインターがそのメニュー項目の上にはなく、かつそのメニュー項目が押された直後ならば以下の処理を行う。
+  {
+   // メニュー項目のボタンを描画する。
+   canvasContextLayer2.save(); // 描画設定を保存する。
+   canvasContextLayer2.beginPath();
+   canvasContextLayer2.rect(
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height );
+   canvasContextLayer2.fillStyle = "rgba( 48, 48, 48, 0.5 )";
+   canvasContextLayer2.fill();
+
+   // 枠線を描画する。
+   canvasContextLayer2.strokeStyle = "rgba( 96, 96, 96, 0.8 )";
+   canvasContextLayer2.shadowColor = "white";
+   canvasContextLayer2.shadowBlur = 1;
+   canvasContextLayer2.stroke();
+   canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+   // 文字の設定をする。
+   canvasContextLayer2.save(); // 描画設定を保存する。
+   canvasContextLayer2.fillStyle = "rgba( 96, 96, 96, 0.9 )";
+   canvasContextLayer2.font = "16px 'sans-serif'";
+   canvasContextLayer2.textAlign = "center";
+   canvasContextLayer2.textBaseline = "middle";
+
+   // 文字列を描画する。
+   canvasContextLayer2.fillText(
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].text,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width / 2,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height / 2 );
+   canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+  }else
+  // もしポインターがそのメニュー項目の上にはなく、かつそのメニュー項目が押された直後ではないならば以下の処理を行う。
+  {
+   // メニュー項目のボタンを描画する。
+   canvasContextLayer2.save(); // 描画設定を保存する。
+   canvasContextLayer2.beginPath();
+   canvasContextLayer2.rect(
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height );
+   canvasContextLayer2.fillStyle = "rgba( 64, 64, 64, 0.6 )";
+   canvasContextLayer2.fill();
+
+   // 枠線を描画する。
+   canvasContextLayer2.strokeStyle = "rgba( 255, 255, 255, 0.9 )";
+   canvasContextLayer2.shadowColor = "white";
+   canvasContextLayer2.shadowBlur = 1;
+   canvasContextLayer2.stroke();
+   canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+   // 文字の設定をする。
+   canvasContextLayer2.save(); // 描画設定を保存する。
+   canvasContextLayer2.fillStyle = "rgba( 255, 255, 255, 1.0 )";
+   canvasContextLayer2.font = "16px 'sans-serif'";
+   canvasContextLayer2.textAlign = "center";
+   canvasContextLayer2.textBaseline = "middle";
+
+   // 文字列を描画する。
+   canvasContextLayer2.fillText(
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].text,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].width / 2,
+    rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].height / 2 );
+   canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+  }
+ }
+
+
+ // レヴェル表示。
+
+ // 文字の設定をする。
+ canvasContextLayer2.save(); // 描画設定を保存する。
+ canvasContextLayer2.fillStyle = "rgba( 255, 255, 255, 1.0 )";
+ canvasContextLayer2.font = "18px 'sans-serif'";
+ canvasContextLayer2.textAlign = "left";
+ canvasContextLayer2.textBaseline = "middle";
+
+ // 文字列を描画する。
+ canvasContextLayer2.fillText(
+  "Lv: " + (indexOfMapSize - 2),
+  rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i - 1].right + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i - 1].width / 8,
+  rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i - 1].top + rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i - 1].height / 2 );
+ canvasContextLayer2.restore(); // 描画の設定を元に戻す。
+
+
+ // 画面に表示する。
+ displayCanvas();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// マウス ボタンを押した際の処理を行う関数を宣言する。
+function processPointerPushingDown()
+{
+ pointerCoordinate.isPointerPushingDown = true;
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// マウス ボタンを離した際の処理を行う関数を宣言する。
+function processPointerUp()
+{
+ pointerCoordinate.isPointerPushingDown = false;
+
+ let i = 0;
+ for( i = 0; i < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu.length; i++ )
+ {
+  if( pointerCoordinate.coordinateInCanvasX >= rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].left &&
+   pointerCoordinate.coordinateInCanvasX < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].right &&
+   pointerCoordinate.coordinateInCanvasY >= rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].top &&
+   pointerCoordinate.coordinateInCanvasY < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].bottom )
+  {
+   // もしポインターがメニュー項目の上にあったならば以下の処理を行う。
+
+   rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu[i].isMenuClicked = true;
+
+   switch( menuWindowNumber )
+   {
+    case 0:
+     switch( i )
+     {
+      case 0:
+      {
+       // 初期化する。
+       initialize();
+
+       // タイムアウト関数により、一定時間後に画面を更新する関数を実行させる。
+       timerToStopEffectOfClickingButton[i] = setTimeout(
+       function(){rectangleOfMenuWindow[0].rectangleOfMenu[0].isMenuClicked = false; drawingMenu();}, 200 );
+       break;
+      }
+      case 1:
+      {
+       // レヴェルを上げる。
+       if( indexOfMapSize < 9 )
+       {
+        indexOfMapSize++;
+        initialize();
+       }
+
+       // タイムアウト関数により、一定時間後に画面を更新する関数を実行させる。
+       timerToStopEffectOfClickingButton[i] = setTimeout(
+       function(){rectangleOfMenuWindow[0].rectangleOfMenu[1].isMenuClicked = false; drawingMenu();}, 200 );
+       break;
+      }
+      case 2:
+      {
+       // レヴェルを下げる。
+       if( indexOfMapSize > 2 )
+       {
+        indexOfMapSize--;
+        initialize();
+       }
+
+       // タイムアウト関数により、一定時間後に画面を更新する関数を実行させる。
+       timerToStopEffectOfClickingButton[i] = setTimeout(
+       function(){rectangleOfMenuWindow[0].rectangleOfMenu[2].isMenuClicked = false; drawingMenu();}, 200 );
+       break;
+      }
+      default:
+       break;
+     }
+
+    default:
+       break;
+   }
+  }
+ }
+}
+
+
+///////////////////////////////////////////////////////
+
+
+function processKeyDownEvent( event )
+{
+ let code = event.code;
+
+ // キーボードの押されたキーに応じた処理を行う。
+ if( code == 'KeyS' || code == 'KeyJ' )
+ {
+  // 現在位置を左へ移動させる。
+  if( mapArray[currentPosition[0]][currentPosition[1] - 1] == false )
+  {
+   currentPosition[1] -= 2;
+   drawPosition();
+  }
+ }else if( code == 'KeyE' || code == 'KeyI' )
+ {
+  // 現在位置を上へ移動させる。
+  if( mapArray[currentPosition[0] - 1][currentPosition[1]] == false )
+  {
+   currentPosition[0] -= 2;
+   drawPosition();
+  }
+ }else if( code == 'KeyF' || code == 'KeyL' )
+ {
+  // 現在位置を右へ移動させる。
+  if( mapArray[currentPosition[0]][currentPosition[1] + 1] == false )
+  {
+   currentPosition[1] += 2;
+   drawPosition();
+  }
+ }else if( code == 'KeyD' || code == 'KeyK' )
+ {
+  // 現在位置を下へ移動させる。
+  if( mapArray[currentPosition[0] + 1][currentPosition[1]] == false )
+  {
+   currentPosition[0] += 2;
+   drawPosition();
+  }
+ }
+}
+
+
+///////////////////////////////////////////////////////
+
+
+function processKeyUpEvent( event )
+{
+ let code = event.code;
+
+ // キーボードの押されたキーに応じた処理を行う。
+ if( code == 'KeyA' || code == 'KeyJ' )
+ {
+
+ }else if( code == 'KeyW' || code == 'KeyI' )
+ {
+
+ }else if( code == 'KeyD' || code == 'KeyL' )
+ {
+
+ }else if( code == 'KeyS' || code == 'KeyK' )
+ {
+
+ }
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// 初期化する為の関数を宣言する。
+function initialize()
+{
+ //イヴェント リスナーを解除する。
+ removeAllOfInteractiveCanvasListener();
+
+ // 変数を初期化する。
+ mapArrayWidth = Math.pow( 2, indexOfMapSize ) + 1 + 4;
+ mapArrayHeight = Math.pow( 2, indexOfMapSize ) + 1 + 4;
+
+ // Canvasを初期化する。
+ initializeCanvas();
+
+ // メニューを描画する。
+ drawingMenu();
+
+ // 迷路の2次元配列をfalse(空間)で埋めて初期化する。
+ let i = 0;
+ let j = 0;
+ for( i = 0; i < mapArrayHeight; i++ )
+ {
+  mapArray[i] = [];
+  for( j = 0; j < mapArrayWidth; j++ )
+  {
+   mapArray[i][j] = false;
+  }
+ }
+
+ // 現在位置を初期化する。
+ currentPosition[0] = 0;
+ currentPosition[1] = 0;
+
+ // クリック イヴェントを扱う関数を設定する関数を呼び出す。
+ addClickHandler();
+
+ // キーボードのキーのイヴェントを扱う関数を設定する関数を呼び出す。
+ addKeyHandler();
+
+ // ポインターの座標を取得する為のタイマーを始動する。
+ startTimerToGetPositionOfPointer();
+
+ // タイムアウト関数により、一定時間後に迷路を生成する関数を実行させる。
+ timerToGenerateMaze = setTimeout( generateMaze, 100 );
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// Canvasを再初期化する為の関数を宣言する。
+function resetCanvas()
+{
+ // Canvasを初期化する。
+ initializeCanvas();
+
+ // メニューを描画する。
+ drawingMenu();
+
+ // 迷路を描画する。
+ drawMaze();
+}
+
+
+///////////////////////////////////////////////////////
+
+
+// HTMLが読み込み終わった直後に初期化する。
+document.addEventListener( "DOMContentLoaded", function(){initialize(); setTimeout( resetCanvas, 2000 );});
+
+
+///////////////////////////////////////////////////////
+
+
+window["initializeCanvas"] = initializeCanvas;
+window["clearCanvasLayer"] = clearCanvasLayer;
+window["startTimerToGetPositionOfPointer"] = startTimerToGetPositionOfPointer;
+window["getPositionOfPointer"] = getPositionOfPointer;
+window["stopTimerToGetPositionOfPointer"] = stopTimerToGetPositionOfPointer;
+window["displayCanvas"] = displayCanvas;
+window["addClickHandler"] = addClickHandler;
+window["addKeyHandler"] = addKeyHandler;
+window["drawingMenu"] = drawingMenu;
+window["processPointerUp"] = processPointerUp;
+window["processPointerPushingDown"] = processPointerPushingDown;
+window["processKeyDownEvent"] = processKeyDownEvent;
+window["processKeyUpEvent"] = processKeyUpEvent;
+window["removeAllOfInteractiveCanvasListener"] = removeAllOfInteractiveCanvasListener;
+window["generateMaze"] = generateMaze;
+window["initialize"] = initialize;
+window["drawMaze"] = drawMaze;
+window["drawPosition"] = drawPosition;
+window["resetCanvas"] = resetCanvas;
+
+
+
+///////////////////////////////////////////////////////
+} // モジュール全体のスコープの終わり。
+new globalObjectOfThisProgram(); // コンストラクターを実行する。
+
+
+</script>
+</body>
+</html>
