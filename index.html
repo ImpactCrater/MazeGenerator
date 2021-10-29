@@ -13,7 +13,7 @@
 </div>
 
 <br />
-<div id = "description1" style = "text-align: left; max-width: 720px; margin: 0 auto; font-size: 80%">
+<div id="description1" style="text-align: left; max-width: 720px; margin: 0 auto; font-size: 75%">
 <strong>迷路自動生成ウェブ アプリケーション</strong>です。<br />
 <br />
 画面に<strong><span style="color:#4080CE;">青色の枡</span></strong>と<strong><span style="color:#4080CE;">緑色の枡</span></strong>があるかと思います。<br />
@@ -277,17 +277,24 @@ function startTimerToGetPositionOfPointer()
 // ポインターの座標を取得する為の関数を宣言する。
 function getPositionOfPointer( event )
 {
- pointerCoordinate.clientX = event.clientX + window.pageXOffset;
- pointerCoordinate.clientY = event.clientY + window.pageYOffset;
- if( pointerCoordinate.clientX >= canvasContext.canvas.offsetLeft && pointerCoordinate.clientX <= canvasContext.canvas.offsetLeft + canvasContext.canvas.width )
+ pointerCoordinate.clientX = event.clientX;
+ pointerCoordinate.clientY = event.clientY;
+ let clientRectOfCanvas = divElementOfCanvas.getBoundingClientRect();
+
+/*
+ canvasContext.font = "24px serif";
+ text = pointerCoordinate.coordinateInCanvasX + "," + pointerCoordinate.clientX + "," + clientRectOfCanvas.left
+ canvasContext.fillText(text, 20, 32);
+*/
+
+ if( pointerCoordinate.clientX >= clientRectOfCanvas.left && pointerCoordinate.clientX <= clientRectOfCanvas.left + canvasContext.canvas.width )
  {
-  if( pointerCoordinate.clientY >= canvasContext.canvas.offsetTop && pointerCoordinate.clientY <= canvasContext.canvas.offsetTop + canvasContext.canvas.height )
+  if( pointerCoordinate.clientY >= clientRectOfCanvas.top && pointerCoordinate.clientY <= clientRectOfCanvas.top + canvasContext.canvas.height )
   {
    // もしポインターの位置がCanvas内であれば以下の処理を行う。
-
    pointerCoordinate.isPointerInCanvasArea = true;
-   pointerCoordinate.coordinateInCanvasX = pointerCoordinate.clientX - canvasContext.canvas.offsetLeft;
-   pointerCoordinate.coordinateInCanvasY = pointerCoordinate.clientY - canvasContext.canvas.offsetTop;
+   pointerCoordinate.coordinateInCanvasX = pointerCoordinate.clientX - clientRectOfCanvas.left;
+   pointerCoordinate.coordinateInCanvasY = pointerCoordinate.clientY - clientRectOfCanvas.top;
 
    let i = 0;
    for( i = 0; i < rectangleOfMenuWindow[menuWindowNumber].rectangleOfMenu.length; i++ )
